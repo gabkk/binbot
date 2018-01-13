@@ -1,4 +1,7 @@
-import sys, os, json, time, datetime, math, curses, thread
+import time
+import curses
+import threading 
+
 
 #import json
 #import curses
@@ -77,6 +80,18 @@ def get_credential():
                 cles = line.split("=", 2)[1][:-1]
     return cles, secret
 
+
+
+class myThread (threading.Thread):
+    def __init__(self, display):
+        threading.Thread.__init__(self)
+        self.display = display
+    def run(self):
+        win_coin_display(self.display)
+
+
+
+
 def main():
     bm = BinanceSocketManager(client)
     # create stdscr
@@ -95,7 +110,10 @@ def main():
     display_window.border()
 
     # thread to refresh display_window
-    thread.start_new_thread(win_coin_display, (display_window,))
+    thread1 = myThread(display_window)
+    thread1.start()
+
+    # exit(0)
 
     # main thread, waiting for user's command.
     while True:
