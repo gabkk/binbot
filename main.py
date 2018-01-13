@@ -2,7 +2,6 @@ import time
 import curses
 import threading 
 
-
 #import json
 #import curses
 #import time
@@ -10,6 +9,7 @@ import threading
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
 global client
+result = "No command"
 coins = ["TRXBTC"]
 coin_selected = ""
 coin_prices = {}
@@ -63,13 +63,13 @@ def add_coin_fct(command):
     if not "BTC" in (new_coin):
         new_coin = new_coin.upper() + "BTC"
     coins.append(new_coin)
-    return "new coin add to list: " + new_coin
-
-result = ""
+    return "new coin add to list: " + new_coin + "\n"
 
 def result_display(screen):
     while True:
-        screen.addstr(4 , 4, "aaaa")
+        screen.addstr(1 , 1 , result)
+        time.sleep(0.5)
+        screen.refresh()
 
 def process_m_message(msg):
     global coin_prices
@@ -77,7 +77,15 @@ def process_m_message(msg):
     display_coins(display_window)
     display_window.refresh()
 
+class Thread_result (threading.Thread):
+    def __init__(self, display):
+        threading.Thread.__init__(self)
+        self.display = display
+    def run(self):
+        result_display(self.display)
+
 def main():
+    global result
     global display_window
     bm = BinanceSocketManager(client)
     # create stdscr
@@ -86,12 +94,13 @@ def main():
 
     # allow echo, set colors
     curses.echo()
+    curses.curs_set(0)
     curses.start_color()
     curses.use_default_colors()
 
     display_window = curses.newwin(10, 30, 0, 0)
-    result_cmd_window = curses.newwin(3, 70, 13, 0)
-    command_window = curses.newwin(3, 70, 10, 0)
+    result_cmd_window = curses.newwin(3, 70, 10, 0)
+    command_window = curses.newwin(3, 70, 13, 0)
 
     command_window.border()
     display_window.border()
@@ -102,11 +111,8 @@ def main():
     # thread to refresh display_window
     # thread1 = myThread(display_window)
     # thread1.start()
-
-    # exit(0)
-
-    # thread to refresh display_window
-    # thread.start_new_thread(result_display, (result_cmd_window,))
+    thread2 = Thread_result(result_cmd_window)
+    thread2.start()
 
     # main thread, waiting for user's command.
     while True:
@@ -118,7 +124,8 @@ def main():
         elif command in coins:
             coin_selected = command
         else:
-            command_window.addstr(1, 0, ' '*len(command))
+            result = "Unknow command"
+
     curses.endwin()
     teardown(command_window)
     teardown(display_window)
