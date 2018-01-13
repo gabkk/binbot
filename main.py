@@ -21,7 +21,6 @@ def teardown(screen):
     screen.keypad(False)
     curses.echo()
     # restore the terminal to its original state
-    curses.endwin()
 
 def print_coins(symbol_list, price_list):
     for coin in coins:
@@ -65,9 +64,9 @@ def add_coin_fct(command):
     coins.append(new_coin)
     return "new coin add to list: " + new_coin + "\n"
 
-def result_display(screen):
+def result_display(screen, result):
     while True:
-        screen.addstr(1 , 1 , result)
+        screen.addstr(1 , 0 , result)
         time.sleep(0.5)
         screen.refresh()
 
@@ -77,12 +76,6 @@ def process_m_message(msg):
     display_coins(display_window)
     display_window.refresh()
 
-class Thread_result (threading.Thread):
-    def __init__(self, display):
-        threading.Thread.__init__(self)
-        self.display = display
-    def run(self):
-        result_display(self.display)
 
 def main():
     global result
@@ -106,29 +99,27 @@ def main():
     display_window.border()
     result_cmd_window.border()
 
-    bm.start_multiplex_socket(['bnbbtc@aggTrade', 'neobtc@aggTrade'], process_m_message)
+    connection = bm.start_multiplex_socket(['ethbtc@aggTrade'], process_m_message)
     bm.start()
-    # thread to refresh display_window
-    # thread1 = myThread(display_window)
-    # thread1.start()
-    thread2 = Thread_result(result_cmd_window)
-    thread2.start()
 
     # main thread, waiting for user's command.
+    #result_display(result_cmd_window, "")
     while True:
         command = my_raw_input(command_window, 0, 0, 'Enter your command (add coin NAME):')
         if command == 'quit':
             break
         elif "add coin" in command:
             result = add_coin_fct(command)
-        elif command in coins:
-            coin_selected = command
         else:
             result = "Unknow command"
+        #result_display(result_cmd_window, result)
 
-    curses.endwin()
+    bm.stop_socket(connection)
+    bm.close()
+    stdscr.clear()
     teardown(command_window)
     teardown(display_window)
+    curses.endwin()
 
 #    processmenu(menu_data)
 #    curses.endwin()
