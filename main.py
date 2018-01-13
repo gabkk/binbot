@@ -105,8 +105,8 @@ def main():
     # main thread, waiting for user's command.
     #result_display(result_cmd_window, "")
     while True:
-        command = my_raw_input(command_window, 0, 0, 'Enter your command (add coin NAME):')
-        if command == 'quit':
+        command = str(my_raw_input(command_window, 0, 0, 'Enter your command (add coin NAME):'))
+        if "quit" in command:
             break
         elif "add coin" in command:
             result = add_coin_fct(command)
@@ -116,15 +116,9 @@ def main():
 
     bm.stop_socket(connection)
     bm.close()
-    stdscr.clear()
     teardown(command_window)
     teardown(display_window)
     curses.endwin()
-
-#    processmenu(menu_data)
-#    curses.endwin()
-#   bm.close()
-#    os.system('clear')
 
 
 if __name__ == "__main__":
