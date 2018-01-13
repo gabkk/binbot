@@ -7,8 +7,7 @@ import sys, os, json, time, datetime, math, curses, thread
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
 global client
-coins = ["TRXBTC","XLMBTC","IOTABTC"]
-
+coins = ["TRXBTC"]
 coin_selected = ""
 
 def teardown(screen):
@@ -77,6 +76,19 @@ def get_credential():
                 cles = line.split("=", 2)[1][:-1]
     return cles, secret
 
+def add_coin_fct(command):
+    new_coin = command.split(" ", 3)[2]
+    if not "BTC" in (new_coin):
+        new_coin = new_coin.upper() + "BTC"
+    coins.append(new_coin)
+    return "new coin add to list: " + new_coin
+
+result = ""
+
+def result_display(screen):
+    while True:
+        screen.addstr(4 , 4, "aaaa")
+
 def main():
     bm = BinanceSocketManager(client)
     # create stdscr
@@ -88,29 +100,35 @@ def main():
     curses.start_color()
     curses.use_default_colors()
 
-    # define 2 windows
-    command_window = curses.newwin(3, 30, 10, 0)
     display_window = curses.newwin(10, 30, 0, 0)
+    result_cmd_window = curses.newwin(3, 70, 13, 0)
+    command_window = curses.newwin(3, 70, 10, 0)
+
     command_window.border()
     display_window.border()
+    result_cmd_window.border()
 
     # thread to refresh display_window
     thread.start_new_thread(win_coin_display, (display_window,))
 
+    # thread to refresh display_window
+    thread.start_new_thread(result_display, (result_cmd_window,))
+
     # main thread, waiting for user's command.
     while True:
-        command = my_raw_input(command_window, 0, 0, 'Enter your command :')
+        command = my_raw_input(command_window, 0, 0, 'Enter your command (add coin NAME):')
         if command == 'quit':
             break
-        elif command == 'list coin':
-            break
+        elif "add coin" in command:
+            result = add_coin_fct(command)
         elif command in coins:
             coin_selected = command
         else:
             command_window.addstr(1, 0, ' '*len(command))
-
     curses.endwin()
-    teardown(screen)
+    teardown(command_window)
+    teardown(display_window)
+    print test
 
 #    processmenu(menu_data)
 #    curses.endwin()
