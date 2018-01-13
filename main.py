@@ -88,7 +88,7 @@ def add_coin_fct(command):
 
 def result_display(screen):
     while True:
-        screen.addstr(1 , 1, result)
+        screen.addstr(1 , 1 , result)
         time.sleep(0.5)
         screen.refresh()
 
@@ -115,6 +115,7 @@ def main():
 
     # allow echo, set colors
     curses.echo()
+    curses.curs_set(0)
     curses.start_color()
     curses.use_default_colors()
 
@@ -143,7 +144,8 @@ def main():
         elif command in coins:
             coin_selected = command
         else:
-            command_window.addstr(1, 0, ' '*len(command))
+            result = "Unknow command"
+
     curses.endwin()
     teardown(command_window)
     teardown(display_window)
