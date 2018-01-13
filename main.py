@@ -2,7 +2,6 @@ import time
 import curses
 import threading 
 
-
 #import json
 #import curses
 #import time
@@ -10,6 +9,7 @@ import threading
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
 global client
+result = "No command"
 coins = ["TRXBTC"]
 coin_selected = ""
 
@@ -84,23 +84,30 @@ def add_coin_fct(command):
     if not "BTC" in (new_coin):
         new_coin = new_coin.upper() + "BTC"
     coins.append(new_coin)
-    return "new coin add to list: " + new_coin
-
-result = ""
+    return "new coin add to list: " + new_coin + "\n"
 
 def result_display(screen):
     while True:
-        screen.addstr(4 , 4, "aaaa")
+        screen.addstr(1 , 1, result)
+        time.sleep(0.5)
+        screen.refresh()
 
-class myThread (threading.Thread):
+class Thread_display (threading.Thread):
     def __init__(self, display):
         threading.Thread.__init__(self)
         self.display = display
     def run(self):
         win_coin_display(self.display)
 
+class Thread_result (threading.Thread):
+    def __init__(self, display):
+        threading.Thread.__init__(self)
+        self.display = display
+    def run(self):
+        result_display(self.display)
 
 def main():
+    global result
     bm = BinanceSocketManager(client)
     # create stdscr
     stdscr = curses.initscr()
@@ -112,21 +119,19 @@ def main():
     curses.use_default_colors()
 
     display_window = curses.newwin(10, 30, 0, 0)
-    result_cmd_window = curses.newwin(3, 70, 13, 0)
-    command_window = curses.newwin(3, 70, 10, 0)
+    result_cmd_window = curses.newwin(3, 70, 10, 0)
+    command_window = curses.newwin(3, 70, 13, 0)
 
     command_window.border()
     display_window.border()
     result_cmd_window.border()
 
     # thread to refresh display_window
-    thread1 = myThread(display_window)
+    thread1 = Thread_display(display_window)
     thread1.start()
 
-    # exit(0)
-
-    # thread to refresh display_window
-    # thread.start_new_thread(result_display, (result_cmd_window,))
+    thread2 = Thread_result(result_cmd_window)
+    thread2.start()
 
     # main thread, waiting for user's command.
     while True:
