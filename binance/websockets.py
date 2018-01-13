@@ -453,7 +453,7 @@ class BinanceSocketManager(threading.Thread):
 
     def run(self):
         try:
-            reactor.run(installSignalHandlers=True)
+            reactor.run(installSignalHandlers=False)
         except ReactorAlreadyRunning:
             # Ignore error about reactor already running
             pass

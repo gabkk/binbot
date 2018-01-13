@@ -12,6 +12,8 @@ from binance.websockets import BinanceSocketManager
 global client
 coins = ["TRXBTC"]
 coin_selected = ""
+coin_prices = {}
+display_window = 0
 
 def teardown(screen):
     # reverse everything that you changed about the terminal
@@ -30,35 +32,12 @@ def print_coins(symbol_list, price_list):
         else:
             print(str(symbol_list[index]) + " ,price: " + str(price_list[index]))
 
-def display_coins(symbol_list, price_list, screen):
-    pos = 4
-    for coin in coins:
-        try:
-            index = symbol_list.index(coin)
-        except ValueError:
-            pass
-        else:
-            screen.addstr(pos , 4, str(symbol_list[index]) + " ,price: " + str(price_list[index]))
-            pos += 1
+def display_coins(screen):
+    pos = 0
+    for k , v in coin_prices.items():
+        screen.addstr(pos , 4, k + " ,price: " + v)
+        pos += 1
 
-def start_binance(client):
-
-    #print(client.get_symbol_ticker())
-    symbol_list = []
-    price_list = []
-    all_coins = client.get_symbol_ticker()
-    for coin in all_coins:
-        symbol_list.append(coin['symbol'])
-        price_list.append(coin['price'])
-        #print_coins(symbol_list, price_list)
-    return symbol_list, price_list
-
-def win_coin_display(window):
-    while True:
-        symbol_list, price_list = start_binance(client)
-        time.sleep(0.5)
-        display_coins(symbol_list, price_list, window)
-        window.refresh()
 
 def my_raw_input(window, r, c, prompt_string):
     curses.echo()
@@ -92,15 +71,14 @@ def result_display(screen):
     while True:
         screen.addstr(4 , 4, "aaaa")
 
-class myThread (threading.Thread):
-    def __init__(self, display):
-        threading.Thread.__init__(self)
-        self.display = display
-    def run(self):
-        win_coin_display(self.display)
-
+def process_m_message(msg):
+    global coin_prices
+    coin_prices.update({msg['data']['s']:msg['data']['p']})
+    display_coins(display_window)
+    display_window.refresh()
 
 def main():
+    global display_window
     bm = BinanceSocketManager(client)
     # create stdscr
     stdscr = curses.initscr()
@@ -119,9 +97,11 @@ def main():
     display_window.border()
     result_cmd_window.border()
 
+    bm.start_multiplex_socket(['bnbbtc@aggTrade', 'neobtc@aggTrade'], process_m_message)
+    bm.start()
     # thread to refresh display_window
-    thread1 = myThread(display_window)
-    thread1.start()
+    # thread1 = myThread(display_window)
+    # thread1.start()
 
     # exit(0)
 
@@ -142,7 +122,6 @@ def main():
     curses.endwin()
     teardown(command_window)
     teardown(display_window)
-    print test
 
 #    processmenu(menu_data)
 #    curses.endwin()
