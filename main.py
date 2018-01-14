@@ -1,48 +1,14 @@
 import time
-import curses
 from twisted.internet import reactor
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
-global client
+from display_ncurses import Window
 
 result = "No command"
 coins = ["TRXBTC"]
 coin_selected = ""
 coin_prices = {}
-display_window = 0
-
-
-def teardown(screen):
-    # reverse everything that you changed about the terminal
-    curses.nocbreak()
-    screen.keypad(False)
-    curses.echo()
-    # restore the terminal to its original state
-
-
-def print_coins(symbol_list, price_list):
-    for coin in coins:
-        try:
-            index = symbol_list.index(coin)
-        except ValueError:
-            pass
-        else:
-            print(str(symbol_list[index])+" ,price: "+str(price_list[index]))
-
-
-def display_coins(screen):
-    pos = 0
-    for k, v in coin_prices.items():
-        screen.addstr(pos, 4, k + " ,price: " + v)
-        pos += 1
-
-
-def my_raw_input(window, r, c, prompt_string):
-    curses.echo()
-    window.addstr(r, c, prompt_string)
-    window.refresh()
-    input = window.getstr(r + 1, c)
-    return input
+window = 0
 
 
 def get_credential():
@@ -74,40 +40,28 @@ def result_display(screen, result):
 
 
 def process_m_message(msg):
-    global coin_prices
+    pos = 1
     coin_prices.update({msg['data']['s']: msg['data']['p']})
-    display_coins(display_window)
+    display_window = window.get_display_window()
+    for k, v in coin_prices.items():
+        display_window.addstr(pos, 1, k + " ,price: " + v)
+        pos += 1
     display_window.refresh()
 
 
 def main():
     global result
-    global display_window
+    global window
+    cles, secret = get_credential()
+    client = Client(cles, secret)
+    window = Window()
     bm = BinanceSocketManager(client)
-    # create stdscr
-    stdscr = curses.initscr()
-    stdscr.clear()
-
-    # allow echo, set colors
-    curses.echo()
-    curses.curs_set(0)
-    curses.start_color()
-    curses.use_default_colors()
-
-    display_window = curses.newwin(10, 30, 0, 0)
-    result_cmd_window = curses.newwin(3, 70, 10, 0)
-    cmd_window = curses.newwin(3, 70, 13, 0)
-
-    cmd_window.border()
-    display_window.border()
-    result_cmd_window.border()
-
     bm.start_multiplex_socket(['ethbtc@aggTrade'], process_m_message)
     bm.start()
 
     # main thread, waiting for user's command.
     while True:
-        command = str(my_raw_input(cmd_window, 0, 0, 'Enter your command:'))
+        command = str(window.my_raw_input(0, 0, 'Enter your command:'))
         if "quit" in command:
             bm.close()
             break
@@ -115,13 +69,8 @@ def main():
             result = add_coin_fct(command)
         else:
             result = "Unknow command"
-
-    teardown(cmd_window)
-    teardown(display_window)
-    curses.endwin()
+    window.close_ncurses()
     reactor.stop()
 
 if __name__ == "__main__":
-    cles, secret = get_credential()
-    client = Client(cles, secret)
     main()
