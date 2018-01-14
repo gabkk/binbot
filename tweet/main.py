@@ -3,11 +3,14 @@ import parseJson as data
 import parseJson
 import auth
 import time
+import datetime
 from tweepy import Stream
 from tweepy.streaming import StreamListener
+import pyparsing as pp
 
 class StreamListener(tweepy.StreamListener):
     def on_data(self, data):
+        print data
         return True
 
     def on_status(self, status):
@@ -37,9 +40,11 @@ if __name__ == "__main__":
     while True:
         try:
             for analyst in cryptoanalysts:
-                lastTweetFirst = apiTwitter.user_timeline(screen_name = analyst, count = 1, include_rts = False)[0].text
-                alltweets.append(lastTweetFirst)
-            print alltweets
+                tmp_twit = apiTwitter.user_timeline(screen_name = analyst, count = 1, include_rts = False)[0]
+                alltweets.append(tmp_twit)
+            for tweet in alltweets:
+                if (datetime.datetime.now() - tweet.created_at).days < 1:
+                    print tweet.text
         except:
             raise
             continue
