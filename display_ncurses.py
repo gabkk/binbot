@@ -21,7 +21,7 @@ class Window():
         rows, columns = os.popen('stty size', 'r').read().split()
         self.display_window = curses.newwin(10, int(columns), 0, 0)
         self.cmd_window = curses.newwin(3, int(columns), 10, 0)
-        self.result_cmd_window = curses.newwin(6, int(columns), 13, 0)
+        self.result_cmd_window = curses.newwin(25, int(columns), 13, 0)
 
         self.display_window.border()
         self.result_cmd_window.border()
@@ -37,6 +37,11 @@ class Window():
         input = self.cmd_window.getstr(r + 1, c + 1)
         return input
 
+    def remove_coin(self, coin):
+        for k, v in self._coin_prices.items():
+            if k == coin:
+                del self._coin_prices[k]
+
     def display_prices(self, msg):
         pos = 1
         self._coin_prices.update({msg['data']['s']: msg['data']['p']})
@@ -45,14 +50,27 @@ class Window():
             pos += 1
         self.display_window.refresh()
 
+    def result_display_spec(self, screen, history):
+        screen.clear()
+        screen.border()
+        i = 1
+        for result in history:
+            screen.addstr(i, 1, str(result['symbol']))
+            i += 1
+            if i > 20:
+                break
+        screen.refresh()
+
     def result_display(self, screen, history):
         screen.clear()
         screen.border()
         i = 1
         for result in history:
-            screen.addstr(1, i, result)
+            screen.addstr(i, 1, result + " iter = " + str(i))
             i += 1
         screen.refresh()
+
+#    def refresh(self, screen, history):
 
     def close_ncurses(self):
         curses.nocbreak()

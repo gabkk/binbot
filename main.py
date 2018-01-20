@@ -32,7 +32,7 @@ def main():
     bm.start()
 
     # main thread, waiting for user's command.
-    command = Command(window, bm)
+    command = Command(window, bm, client)
     command.main_loop()
 
     reactor.stop()
