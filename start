@@ -1,3 +1,0 @@
-pip install python-binance
-pip install tweepy
-python2.7 -m virtualenv env;source env/bin/activate
