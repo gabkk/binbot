@@ -1,3 +1,9 @@
+help_str = [' AVAILABLE COMMANDS\n', \
+            ' ad -> to add a new coin, ex: ac iota\n',\
+            ' rm -> to rm an existing coin, ex: rm iota\n'\
+            ' ls -> to rm an existing coin, ex: rm iota\n'\
+            ]
+
 class Command():
     def __init__(self, window, bm, client):
         self._window = window
@@ -7,48 +13,33 @@ class Command():
         self._list_coins = []
 
     def display_help(self):
+        self._window.result_display_spec(self._window.result_cmd_window, help_str)
 
-#        msg1 = ['$ ad // to add a new coin, ex: ac iota\n$ rm // to rm an existing coin, ex: rm iota\nList of coin\n']
-#        for coin in msg1:
-#            msg1.append(str(coin['symbol'])+'\n')
-        self._window.result_display_spec(self._window.result_cmd_window, msg1)
-#        return msg1
+    def display_wallet(self):
+        personal_info = self._client.get_account()
+        self._window.display_dict_window(self._window.result_cmd_window, personal_info)
 
     def add_coin_fct(self, command):
-#        test = self._client.get_symbol_ticker()
         new_coin = command.split(" ", 2)[1]
-#       for coin in test:
-#          if new_coin.upper()+ "BTC" == coin['symbol']:
         new_coin = new_coin.lower() + "btc@aggTrade"
-        #if new_coin in new_coin:
-        self._coins.append(new_coin)            
-   # else:
-    #return "coin doesn't exist"
+        if new_coin not in self._coins:
+            self._coins.append(new_coin)
+        else:
+            return "coin already register: " + new_coin + "\n", self._coins            
         return "new coin add to list: " + new_coin + "\n", self._coins
 
     def del_coin_fct(self, command):
-        #test = self._client.get_symbol_ticker()
         new_coin = command.split(" ", 2)[1]
-        coin_symbole = command.split(" ", 2)[1].upper() + "BTC"
+        coin_symbole = new_coin.upper() + "BTC"
         new_coin = new_coin.lower() + "btc@aggTrade"
-        #for coin in test:
         if new_coin in self._coins:
             self._coins.remove(new_coin)
-        #self._window.result_cmd_window.addstr(4, 4, oui)
-        self._window.remove_coin(coin_symbole)
-#
-        #self._window.result_cmd_window.addstr(5, 5, self._coins)
-
-        #if new_coin in self._window._coin_prices:
-        #if oui in self._window._coin_prices.values():
-        #    del self._window._coin_prices
-
+            self._window.remove_coin(coin_symbole)
+            return "new coin delete to list: " + new_coin + "\n", self._coins
+        else:
+            return "coin doesn't exist" + "\n", self._coins
         self._window.display_window.refresh()
-            #else:
-            #    return "coin doesn't exist"
-        self._window.display_window.clear()
-        self._window.display_window.refresh()
-        return "new coin delete to list: " + new_coin + "\n", self._coins
+
 
     def parse_cmd(self, history, command):
         result = ""
@@ -72,7 +63,7 @@ class Command():
     def main_loop(self):
         history = []
         while True:
-            command = str(self._window.my_raw_input(0, 0, 'Enter your command(help):'))
+            command = str(self._window.my_raw_input(0, 0, 'Enter your command (help):'))
             if "quit" in command:
                 break
             else:

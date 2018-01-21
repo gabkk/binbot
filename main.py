@@ -2,8 +2,8 @@ import time
 from twisted.internet import reactor
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
-from display_ncurses import Window
 from command import Command
+from windows_display import Window
 
 window = 0
 
@@ -26,9 +26,8 @@ def main():
     cles, secret = get_credential()
     client = Client(cles, secret)
     window = Window()
-
     bm = BinanceSocketManager(client)
-    bm.start_multiplex_socket(['ethbtc@aggTrade'], window.display_prices)
+    bm.start_multiplex_socket([''], window.display_prices)
     bm.start()
 
     # main thread, waiting for user's command.

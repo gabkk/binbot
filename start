@@ -1,2 +1,0 @@
-pip install python-binance
-python2.7 -m virtualenv env;source env/bin/activate
