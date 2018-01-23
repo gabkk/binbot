@@ -1,0 +1,29 @@
+
+Use it to test binance API
+
+If you want to try the api:
+
+$ touch credential
+$ echo -e "CLES=XX \nSECRET=XX \n" > credential #replace XX with your credential
+
+
+At the root directory start a python interpreter and copy this:
+
+from binance.client import Client
+def get_credential():
+    filepath = 'credential'
+    cles = ""
+    secret = ""
+    with open(filepath) as fp:
+        for cnt, line in enumerate(fp):
+            if "SECRET" in line:
+                secret = line.split("=", 2)[1][:-1]
+            elif "CLES" in line:
+                cles = line.split("=", 2)[1][:-1]
+    return cles, secret
+
+cles, secret = get_credential()
+client = Client(cles, secret)
+client.get_symbol_ticker()
+
+you can try api function now:

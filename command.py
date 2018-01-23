@@ -1,7 +1,7 @@
 help_str = [' AVAILABLE COMMANDS\n', \
             ' ad -> to add a new coin, ex: ac iota\n',\
             ' rm -> to rm an existing coin, ex: rm iota\n'\
-            ' ls -> to rm an existing coin, ex: rm iota\n'\
+            ' wa -> display_wallet\n'\
             ]
 
 class Command():
@@ -16,8 +16,22 @@ class Command():
         self._window.result_display_spec(self._window.result_cmd_window, help_str)
 
     def display_wallet(self):
+        coin_in_balance = []
         personal_info = self._client.get_account()
-        self._window.display_dict_window(self._window.result_cmd_window, personal_info)
+        for k, v in personal_info.iteritems():
+            if k == "balances":
+                balance = v
+        for coin in balance:
+            if float(coin['locked']) != 0 or float(coin['free']) != 0:
+                coin_in_balance.append(coin)
+
+        self._window.result_cmd_window.clear()
+        self._window.result_cmd_window.border()
+        i = 1
+        for coin in coin_in_balance:
+            self._window.result_cmd_window.addstr(i, 1, str(coin['asset']) + ":" + str(coin['free']) + ", locked: " + str(coin['locked']))
+            i += 1
+        self._window.result_cmd_window.refresh()
 
     def add_coin_fct(self, command):
         new_coin = command.split(" ", 2)[1]
@@ -54,6 +68,9 @@ class Command():
             print self._coins
             self._bm.close()
             self._bm.start_multiplex_socket(self._coins, self._window.display_prices)
+        elif "wa" in command:
+            self.display_wallet()
+            return history
         else:
             result = "Unknow command"
         history.append(result)
