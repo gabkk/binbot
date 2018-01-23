@@ -10,6 +10,7 @@ import pyparsing as pp
 
 class StreamListener(tweepy.StreamListener):
     def on_data(self, data):
+        """here print the data of the Stream"""
         print data
         return True
 
@@ -22,13 +23,13 @@ class StreamListener(tweepy.StreamListener):
             return False
 
 def checkTwitter(currency):
-    # Stream Track the currency
+    """Stream track the currency, not working for the moment"""
     streamlistener = StreamListener()
     stream = tweepy.Stream(auth=auth.auth(), listener=streamlistener)
     stream.filter(track=['$' + currency])
 
 def getAnalyst():
-    # Get the cryptoanalyst
+    """Get the analyst from the cryptoanalyst.txt file"""
     file = open("cryptoanalyst.txt", "r")
     return file.read().splitlines()
 
@@ -40,8 +41,11 @@ if __name__ == "__main__":
     while True:
         try:
             for analyst in cryptoanalysts:
-                tmp_twit = apiTwitter.user_timeline(screen_name = analyst, count = 1, include_rts = False)[0]
-                alltweets.append(tmp_twit)
+                try:
+                    tmp_twit = apiTwitter.user_timeline(screen_name = analyst, count = 1, include_rts = False)[0]
+                    alltweets.append(tmp_twit)
+                except tweepy.error.TweepError:
+                    continue
             for tweet in alltweets:
                 if (datetime.datetime.now() - tweet.created_at).days < 1:
                     print tweet.text
