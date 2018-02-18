@@ -3,6 +3,6 @@ binance/*
 __pycache__/
 *.py[cod]
 *$py.class
-env/*
+env*
 start
 env

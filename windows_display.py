@@ -1,8 +1,6 @@
 import curses
 import os
 
-compteur = 0
-
 class Window():
 
     def __init__(self):
@@ -25,9 +23,9 @@ class Window():
 
         # Set each windows size
         rows, columns = os.popen('stty size', 'r').read().split()
-        self.display_window = curses.newwin(10, int(columns), 0, 0)
-        self.cmd_window = curses.newwin(3, int(columns), 10, 0)
-        self.result_cmd_window = curses.newwin(25, int(columns), 13, 0)
+        self.display_window = curses.newwin(14, int(columns), 0, 0)
+        self.cmd_window = curses.newwin(3, int(columns), 14, 0)
+        self.result_cmd_window = curses.newwin(25, int(columns), 17, 0)
 
         # Set each windows border
         self.display_window.border()
@@ -48,6 +46,9 @@ class Window():
         for k, v in self._coin_prices.items():
             if k == coin:
                 del self._coin_prices[k]
+                del self._coin_prices_old[k]
+                self.display_window.clear()
+
 
     def display_prices(self, msg):
         global compteur
@@ -56,28 +57,42 @@ class Window():
         self._coin_prices.update({msg['data']['s']: msg['data']['p']})
         if self._coin_prices_old == self._coin_prices:
             return
-        pos = 1
+        
+        #We start to display other coin at position 3, Btc start at 1
+        pos = 3
 
         if len(self._coin_prices_old) != len(self._coin_prices):
             self.display_window.clear()
         for k, v in self._coin_prices.items():
             color = 0
             if k in self._coin_prices_old:
-                self.display_window.addstr(pos, 1,  k + " ,price: ")
-                klen = len( k + " ,price: ") + 1
-                if float(self._coin_prices_old[k]) > float(v):
-                    self.display_window.addstr(pos, klen, v, curses.color_pair(1))
-                elif float(self._coin_prices_old[k]) < float(v):
-                    self.display_window.addstr(pos, klen, v, curses.color_pair(2))
-                compteur += 1
-            else:
-                self.display_window.addstr(pos, 1, k + " ,price: ")
-                self.display_window.addstr(pos, klen, v, curses.color_pair(0))
+                if k == 'BTCUSDT':
+                    # change this by responsive pos 
+                    self.display_window.addstr(1, 20, "The King ")
+                    klen = len("The King ") + 21
+                    if float(self._coin_prices_old[k]) > float(v):
+                        v = "{:.2f}".format(float(v))
+                        self.display_window.addstr(1, klen, v, curses.color_pair(1))
+                    elif float(self._coin_prices_old[k]) < float(v):
+                        v = "{:.2f}".format(float(v))
+                        self.display_window.addstr(1, klen, v, curses.color_pair(2))
+                else:
+                    self.display_window.addstr(pos, 1,  k + " ,price: ")
+                    klen = len( k + " ,price: ") + 1
+                    if float(self._coin_prices_old[k]) > float(v):
+                        self.display_window.addstr(pos, klen, v, curses.color_pair(1))
+                    elif float(self._coin_prices_old[k]) < float(v):
+                        self.display_window.addstr(pos, klen, v, curses.color_pair(2))
+
+            #else:
+            #    self.display_window.addstr(pos, 1, k + " ,price: ")
+            #    self.display_window.addstr(pos, klen, v, curses.color_pair(0))
             pos += 1
         self.display_window.border()
         self._coin_prices_old.update({msg['data']['s']: msg['data']['p']})
         self.display_window.refresh()
 
+    # TODO DIRTY
     def result_display_spec(self, screen, history):
         screen.clear()
         screen.border()
@@ -89,6 +104,7 @@ class Window():
                 break
         screen.refresh()
 
+    # TODO DIRTY Create generic display function
     def result_display(self, screen, history):
         screen.clear()
         screen.border()
@@ -97,8 +113,6 @@ class Window():
             screen.addstr(i, 1, result + " iter = " + str(i))
             i += 1
         screen.refresh()
-
-#    def refresh(self, screen, history):
 
     def close_ncurses(self):
         curses.nocbreak()

@@ -27,7 +27,7 @@ def main():
     client = Client(cles, secret)
     window = Window()
     bm = BinanceSocketManager(client)
-    bm.start_multiplex_socket([''], window.display_prices)
+    bm.start_multiplex_socket(['btcusdt@aggTrade'], window.display_prices)
     bm.start()
 
     # main thread, waiting for user's command.
