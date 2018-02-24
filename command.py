@@ -61,6 +61,12 @@ class Command():
 
     def add_coin_fct(self, command):
         new_coin = command.split(" ", 2)[1]
+        prices = self._client.get_all_tickers()
+        for pair in  prices:
+            if str(pair["symbol"]) == new_coin.upper() + "BTC":
+                self._window.update_price(pair)
+        self._window.print_prices()
+
         new_coin = new_coin.lower() + "btc@aggTrade"
         if new_coin not in self._coins:
             self._coins.append(new_coin)
@@ -72,6 +78,7 @@ class Command():
         new_coin = command.split(" ", 2)[1]
         coin_symbole = new_coin.upper() + "BTC"
         new_coin = new_coin.lower() + "btc@aggTrade"
+        self._window.display_window.clear()
         if new_coin in self._coins:
             self._coins.remove(new_coin)
             self._window.remove_coin(coin_symbole)
