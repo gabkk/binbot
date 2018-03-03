@@ -27,12 +27,20 @@ def main():
     client = Client(cles, secret)
     window = Window()
     bm = BinanceSocketManager(client)
-    bm.start_multiplex_socket(['btcusdt@aggTrade'], window.display_prices)
-    bm.start()
+    market_prices = client.get_symbol_ticker()
+    global_info = client.get_account()
+    coin_in_balance = ['btcusdt@aggTrade']
+    for k, v in global_info.iteritems():
+        if k == "balances":
+            for coin in v:
+                if float(coin['locked']) != 0. or float(coin['free']) != 0.:
+                    coin_in_balance.append(str(coin['asset']).lower()+"btc@aggTrade")
 
-    # main thread, waiting for user's command.
-    command = Command(window, bm, client)
-    command.main_loop()
+    if bm.start_multiplex_socket(coin_in_balance, window.display_prices):
+        bm.start()
+        # main thread, waiting for user's command.
+        command = Command(window, bm, client, coin_in_balance)
+        command.main_loop()
 
     reactor.stop()
 
