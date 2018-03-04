@@ -233,9 +233,13 @@ class Command():
                 char = str(self._window.my_raw_input(0, 0, 'Enter your command (help):'))
                 if int(char) > 255:
                     if char == "258":
-                        command.insert(curpos, char)
+                        self._window.redraw_command_line(command, curpos)
+                        #TODO ADD HISTORY
+                        #command.insert(curpos, char)
                     elif char == "259":
-                        command.insert(curpos, char)
+                        self._window.redraw_command_line(command, curpos)
+                        #TODO ADD HISTORY
+                        #command.insert(curpos, char)
                     elif curpos > 0 and char == "260":
                         # KEY_LEFT
                         curpos -= 1
