@@ -19,27 +19,32 @@ def get_credential():
                 cles = line.split("=", 2)[1][:-1]
     return cles, secret
 
-
 def main():
     global window
 
     cles, secret = get_credential()
     client = Client(cles, secret)
-    window = Window()
+    window = Window(client)
     bm = BinanceSocketManager(client)
-    market_prices = client.get_symbol_ticker()
     global_info = client.get_account()
-    coin_in_balance = ['btcusdt@aggTrade']
+    market_prices = client.get_symbol_ticker()
+    coins_in_requete = ['btcusdt@aggTrade']
+    coins_in_balance = []
     for k, v in global_info.iteritems():
         if k == "balances":
             for coin in v:
                 if float(coin['locked']) != 0. or float(coin['free']) != 0.:
-                    coin_in_balance.append(str(coin['asset']).lower()+"btc@aggTrade")
+                    coins_in_requete.append(str(coin['asset']).lower()+"btc@aggTrade")
+                    coins_in_balance.append(coin)
+    # Initialize a first list of price regarding our coins instead of waiting from
+    # the socket to return a new value   
 
-    if bm.start_multiplex_socket(coin_in_balance, window.display_prices):
+    window.init_list_of_price(coins_in_balance, market_prices)
+
+    if bm.start_multiplex_socket(coins_in_requete, window.display_prices):
         bm.start()
         # main thread, waiting for user's command.
-        command = Command(window, bm, client, coin_in_balance)
+        command = Command(window, bm, client, coins_in_requete, coins_in_balance)
         command.main_loop()
 
     reactor.stop()
