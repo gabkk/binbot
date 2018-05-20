@@ -2,6 +2,8 @@ import curses
 import time
 import datetime
 import os
+from binance.enums import *
+from binance.exceptions import BinanceAPIException, BinanceRequestException, BinanceWithdrawException
 
 class Window():
 
@@ -83,6 +85,7 @@ class Window():
             i+=1
         self.cmd_window.refresh()
 
+
     def my_raw_input(self, r, c, prompt_string):
         test = ""
         #self.cmd_window.erase()
@@ -145,14 +148,22 @@ class Window():
             self.display_window.addstr(1, 1, "  History  ", curses.color_pair(4))
             self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
             self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
         elif self.menu_view == "order":
             self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
             self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
             self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(4))
+            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
         elif self.menu_view == "wallet":
             self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
             self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(4))
             self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
+        elif self.menu_view == "bot":
+            self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
+            self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
+            self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(4))
 
     #TODO store tab[3 -4] as float
     def display_sending_order(self, tab, client):
@@ -162,22 +173,28 @@ class Window():
         #   {u'orderId': 30637958, u'clientOrderId': u'qvukDLzCXL2dhuj8iihdqa', u'origQty': u'1.00000000', u'symbol': u'T
         #   RXBTC', u'side': u'SELL', u'timeInForce': u'GTC', u'status': u'NEW', u'transactTime': 1519493840477, u'type': u'LIMIT', u'price':
         #   u'1.00000010', u'executedQty': u'0.00000000'}
+        self.result_cmd_window.clear()
         self.result_cmd_window.addstr(1, 1, "Process "+ tab[1] + ", " + tab[2]) 
         self.result_cmd_window.addstr(2, 1, "Quantity:"+ str(float(tab[3])))
         self.result_cmd_window.addstr(3, 1, "Price satoshi: "+ str(tab[4]))
         self.result_cmd_window.addstr(4, 1, "Total Btc:"+ str(float(tab[4])/100000000*float(tab[3])))
         self.result_cmd_window.refresh()
+        self.result_cmd_window.border()
         #Fixer CE RAW INPUT
-        command = str(chr(int(self.my_raw_input( 0, 0, 'Are you sure(y/n):'))))
+
+        command = str(self.my_raw_input( 0, 0, 'Are you sure(PRESS y to confirm):'))
         self.result_cmd_window.clear()
-        if command == "y":
+        self.result_cmd_window.refresh()
+        self.result_cmd_window.border()
+
+        if int(command) == 121:
             try:
                 ret = client.create_order(symbol=tab[2],
                                         side=tab[1],
                                         type=ORDER_TYPE_LIMIT,
                                         timeInForce=TIME_IN_FORCE_GTC,
                                         quantity=tab[3],
-                                        price=str(float(tab[4])/100000000),
+                                        price='{0:.8f}'.format(float(tab[4])/100000000),
                                         timestamp=int(time.time()))
             except BinanceAPIException as e:
                 self.result_cmd_window.addstr(2, 1, "Failed" + " Api code" + str(e.code) + ", message:" + e.message)
@@ -186,7 +203,6 @@ class Window():
                 self.result_cmd_window.addstr(2, 1, "SUCCED"+str(tab)+ ", ret:" + str(ret) )
         else:
             self.result_cmd_window.addstr(2, 1, "Command Canceled" )
-
 
     def display_all_orders(self, offset):
         all_orders = self._client.get_open_orders()
@@ -207,6 +223,17 @@ class Window():
         self.result_cmd_window.addstr(2, 2, "Error expected format : ")
         self.result_cmd_window.addstr(3, 2, "order [b/s] [COIN] [QTY] [PRICE 1BTC = 100000000]")
         self.result_cmd_window.addstr(4, 2, "ex:   Order  b     trx    32    100")
+
+    def display_bot_info(self, bot_list):
+        if len(bot_list) == 0:
+            self.result_cmd_window.clear()
+            self.result_cmd_window.addstr(2, 2, "Not bot available ")
+            self.result_cmd_window.addstr(3, 2, "bot add NAME <OPTION STARTEGIE>")
+            self.result_cmd_window.addstr(4, 2, "bot list stategie")
+            self.result_cmd_window.border()
+            self.result_cmd_window.refresh()
+        #self.result_cmd_window.addstr(3, 2, "order [b/s] [COIN] [QTY] [PRICE 1BTC = 100000000]")
+        #self.result_cmd_window.addstr(4, 2, "ex:   Order  b     trx    32    100")
 
     # TODO DIRTY
     def result_display_spec(self, screen, history):
@@ -242,7 +269,7 @@ class Window():
         return coin_in_balance
 
     def set_old_prices(self, old_order_coins_price):
-        self.old_order_coins_price = old_order_coins_price
+        self._old_order_coins_price = old_order_coins_price
 
     def display_wallet(self):
         #TODO Check la largeur de windows
@@ -300,12 +327,13 @@ class Window():
                 self.result_cmd_window.addstr(i, 30, total_coin)
                 self.result_cmd_window.addstr(i, 45, str(value_per_token))
                 self.result_cmd_window.addstr(i, 65, vbtc)
-                for coins_trades in self.old_order_coins_price:
-                    if coins_trades['symbol'][:-3] == asset:
-                        if coins_trades['symbol'][-3:] == "BTC":
-                            self.result_cmd_window.addstr(i, 80, coins_trades['price_token'])
-                        elif coins_trades['symbol'][-3:] == "ETH":
-                            self.result_cmd_window.addstr(i, 95, coins_trades['price_token'])
+                if len(self._old_order_coins_price) > 0:
+                    for coins_trades in self._old_order_coins_price:
+                        if coins_trades['symbol'][:-3] == asset:
+                            if coins_trades['symbol'][-3:] == "BTC":
+                                self.result_cmd_window.addstr(i, 80, coins_trades['price_token'])
+                            elif coins_trades['symbol'][-3:] == "ETH":
+                                self.result_cmd_window.addstr(i, 95, coins_trades['price_token'])
                 i += 1
         self.result_cmd_window.border()
         self.result_cmd_window.refresh()

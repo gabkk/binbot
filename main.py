@@ -4,6 +4,7 @@ from binance.client import Client
 from binance.websockets import BinanceSocketManager
 from command import Command
 from windows_display import Window
+from helper_client import get_all_trades
 
 window = 0
 
@@ -28,6 +29,8 @@ def main():
     bm = BinanceSocketManager(client)
     global_info = client.get_account()
     market_prices = client.get_symbol_ticker()
+
+
     coins_in_requete = ['btcusdt@aggTrade']
     coins_in_balance = []
     for k, v in global_info.iteritems():
@@ -38,6 +41,10 @@ def main():
                     coins_in_balance.append(coin)
     # Initialize a first list of price regarding our coins instead of waiting from
     # the socket to return a new value   
+
+    #Retrieve old orders
+    #old_order_coins_price = get_all_trades(client, coins_in_balance)
+    #window.set_old_prices(old_order_coins_price)
 
     window.init_list_of_price(coins_in_balance, market_prices)
 

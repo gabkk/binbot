@@ -1,7 +1,6 @@
 from binance.enums import *
 from binance.exceptions import BinanceAPIException, BinanceRequestException, BinanceWithdrawException
 
-
 #remove this
 import sys
 
@@ -22,6 +21,7 @@ class Command():
         self._client = client
         self._list_coins = []
         self._old_order_coins_price = []
+        self.bot_list = []
 
     def display_help(self):
         self._window.result_display_spec(self._window.result_cmd_window, help_str)
@@ -49,6 +49,7 @@ class Command():
     #TODO Fix bug rm redraw all
     def del_coin_fct(self, command):
         new_coin = command.split(" ", 2)[1]
+        #TODO check rm all doesn't work proprely
         if new_coin == "all":
             for x in self._coins:
                 self._coins.remove(x)
@@ -74,7 +75,7 @@ class Command():
             return 0, tab
         if tab[1] != "b" and tab[1] != "s":
             self._window.result_cmd_window.addstr(1, 1, "Error:" + command + " should be b / s" )
-            self.send_order_usage()
+            self._window.display_order_usage()
             return 0, tab
         try:
             int(tab[3])
@@ -99,16 +100,16 @@ class Command():
         return 1, tab
 
 
-    def send_order(self, command):
+    def send_order(self, result, command, curpos):
         self._window.result_cmd_window.clear()
-        ret_check, tab = self.check_order(command)        
+        self._window.redraw_command_line(command, curpos)
+        ret_check, tab = self.check_order(result) 
         if ret_check == 1:
             self._window.display_sending_order(tab, self._client)
-
         self._window.result_cmd_window.border()
         self._window.result_cmd_window.refresh()
 
-    def parse_cmd(self, history, command):
+    def parse_cmd(self, history, command, curpos):
         result = ""
         for c in command:
             result = result + c
@@ -127,7 +128,7 @@ class Command():
             self._window.display_wallet()
             return history
         elif "order" in fcommand:
-            self.send_order(result)
+            self.send_order(result, command, curpos)
             return history
         else:
             result = "Unknow command '" + fcommand + "'"
@@ -139,68 +140,8 @@ class Command():
         self._window.close_ncurses()
         self._bm.close()
 
-    def calcul_average(self, trade, total_qty_coin, total_price, coin_total):
-        # dict = [{"symbol": asset+"BTC", "price_token":float] 
-        # trade['price']["isBuyer"]["commission"]["time"]['qty']
-        # price
-        qty = float(trade['qty'])
-        price = float(trade['price'])
-        if trade['isBuyer'] == False:
-            total_qty_coin -= qty
-            #TODO trade['commission']
-            total_price -= qty*price
-        elif trade['isBuyer'] == True and coin_total >= total_qty_coin + qty:
-            total_qty_coin += qty
-            #TODO trade['commission']
-            total_price += qty*price
-        elif coin_total < total_qty_coin + qty:
-            diff = coin_total - total_qty_coin
-            total_qty_coin += diff
-            total_price += diff*price
-#        print "coin_total: "+str(coin_total)+" qty_total: "+str(total_qty_coin)+" price:"+str(total_price)
-        return total_qty_coin, total_price
-
-
-# TODO CALCULATE ONLY FOR COIN THAT IS UP TO 1 IN BALANCE TO LIMITE CALLS
-    def get_all_trades(self):
-        for coin in self._coins_in_balance:
-            coin_locked = float(coin['locked'])
-            coin_free = float(coin['free'])
-            coin_total = coin_locked + coin_free 
-            asset = str(coin['asset'])
-            trades_btc = []
-            trades_eth = []
-            try:
-                trades_btc = self._client.get_my_trades(symbol=asset+"BTC", limit=10)
-                trades_eth = self._client.get_my_trades(symbol=asset+"ETH", limit=10)
-            except:
-                #TODO HANDLE THIS
-                pass
-            # Sort trades by last trade
-            trades_btc.sort(reverse=True, key=lambda x:x[u'time'])
-            total_qty_coin = 1.
-            total_price = 0.
- #           print "!!!!!!!!!!!!!!!!!!!!!!! TODO check if zero don't append"
- #           print str(trades_btc)
-
-            for trade_btc in trades_btc:
-                total_qty_coin, total_price = self.calcul_average(trade_btc, total_qty_coin, total_price, coin_total)
-#                print "QTY"+str(total_qty_coin)+"PRICE"+str(total_price)
-                if coin_total == total_qty_coin:
-                    break
-            if total_qty_coin != 0:
-                self._old_order_coins_price.append({"symbol":asset+"BTC","price_token":"{:.8f}".format(total_price/total_qty_coin)})
-            #print str(pair_price)
-            total_price = 0
-            total_qty_coin = 0
-            for trade_eth in trades_eth:
-                total_qty_coin, total_price = self.calcul_average(trade_eth, total_qty_coin, total_price, coin_total)
-#                print "QTY"+str(total_qty_coin)+"PRICE"+str(total_price)
-                if coin_total == total_qty_coin:
-                    break
-            if total_qty_coin != 0:
-                self._old_order_coins_price.append({"symbol":asset+"ETH","price_token":"{:.8f}".format(total_price/total_qty_coin)})
-            #print str(pair_price)
+    def bot_info(self):
+        self._window.display_bot_info(self.bot_list)
 
     def main_loop(self):
         history = []
@@ -216,8 +157,13 @@ class Command():
         #coin_total: 4639.076 qty_total: 4639.076 price:0.03573972524
         #[{'symbol': 'TRXBTC', 'price_token': '0.00000770'}]
         
-        self.get_all_trades()
-        self._window.set_old_prices(self._old_order_coins_price)
+        #self.get_all_trades()
+
+# Removed in main
+#        self._old_order_coins_price = get_all_trades(self._client, self._coins_in_balance)
+#        self._window.set_old_prices(self._old_order_coins_price)
+
+
         #TODO check if i need this
 #        market_prices = self._client.get_symbol_ticker()
 #        coin_in_balance = self.get_coin_in_balance()
@@ -250,16 +196,21 @@ class Command():
                         curpos -= 1
                         self._window.redraw_command_line(command, curpos)
                     elif char == "265":
-                        self._window.set_menu_value("history") 
+                        self._window.set_menu_value("history")
+                        self._window.result_display(self._window.result_cmd_window, history)
                     elif char == "266":
                         self._window.set_menu_value("wallet") 
                     elif char == "267":
                         self._window.set_menu_value("order") 
+                    elif char == "268":
+                        self._window.set_menu_value("bot")
+                        self.bot_info()
+#                        self._window.result_display(self._window.result_cmd_window, history)
                     elif  curpos > 0 and curpos < len(command):
                         command.insert(curpos, char)
                 else:                
                     if char == "10":
-                        history = self.parse_cmd(history, command)
+                        history = self.parse_cmd(history, command, curpos)
                         command = [""]
                         curpos = 0
                         char = ''                    
