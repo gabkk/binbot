@@ -43,6 +43,7 @@ def main():
     # the socket to return a new value   
 
     #Retrieve old orders
+    #TODO improve this
     #old_order_coins_price = get_all_trades(client, coins_in_balance)
     #window.set_old_prices(old_order_coins_price)
 

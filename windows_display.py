@@ -36,24 +36,31 @@ class Window():
         # Set each windows size
         rows, columns = os.popen('stty size', 'r').read().split()
         self.first_draw = 0
+        self.redraw = 0
         self.rows = rows
         self.columns = columns
         self.tot_column_len_price = 0
         self.size_display_windows = int(rows) / 3
         # where BTC price start
         self.size_top_menu = 5
-        size_cmd_windows = 3
-        size_result_cmd_windows = int(rows) - (self.size_display_windows + size_cmd_windows)
 
-        pos_display_windows = 0
-        pos_cmd_windows = pos_display_windows + self.size_display_windows + 1
-        pos_result_cmd_windows = pos_cmd_windows + size_cmd_windows + 1
+        size_logger = 6
+        size_cmd_windows = 3
+        size_result_cmd_windows = int(rows) - (self.size_top_menu + self.size_display_windows + size_cmd_windows + size_logger)
+
+        pos_top_menu = 0
+        pos_display_windows = pos_top_menu + self.size_top_menu
+        pos_cmd_windows = pos_display_windows + self.size_display_windows
+        pos_result_cmd_windows = pos_cmd_windows + size_cmd_windows
+        pos_logger = pos_result_cmd_windows + size_result_cmd_windows
 
         #TODO change this parameter
         self.menu_view = "history"
+        self.display_menu_window = curses.newwin(self.size_top_menu, int(columns), pos_top_menu, 0)
         self.display_window = curses.newwin(self.size_display_windows, int(columns), pos_display_windows, 0)
         self.cmd_window = curses.newwin(size_cmd_windows, int(columns), pos_cmd_windows, 0)
         self.result_cmd_window = curses.newwin(size_result_cmd_windows, int(columns), pos_result_cmd_windows, 0)
+        self.logger = curses.newwin(size_logger, int(columns), pos_logger, 0)
         self.cmd_window.keypad(1)
         self.cmd_window.box()
         curses.curs_set(0)
@@ -61,15 +68,85 @@ class Window():
         # Set each windows border
         self.display_window.border()
         self.result_cmd_window.border()
+        self.logger.border()
         self.cmd_window.refresh()
         self.result_cmd_window.refresh()
         self.display_window.refresh()
+        self.logger.refresh()
+
+    def display_in_logger(self, str):
+        self.logger.clear()
+        self.logger.addstr(1, 1, str)
+        self.logger.border()
+        self.logger.refresh()
+
+    def init_list_of_price(self, coin_in_balance, market_prices):
+        # x = {u'symbol': u'BNBBTC', u'price': u'0.04661000'}
+        # x['symbol'] = BNBBTC
+        # coin = {u'locked': u'1316.00000000', u'asset': u'XVG', u'free': u'0.18300000'}
+        # coin['asset'] = BTC
+        self.display_window.clear()
+        if len(coin_in_balance) > 0:        
+            for coin in coin_in_balance:
+                for x in market_prices:
+                    if str(x['symbol']) == str(coin['asset'])+"BTC":
+                        self._coin_prices.update({str(x['symbol']): x["price"]})
+                        self._coin_prices_old.update({str(x['symbol']): x["price"]})
+        self.display_window.refresh()
+        self.print_prices()
 
     def get_prices(self):
         return self._coin_prices
 
+    def get_coin_in_balance(self):
+        coin_in_balance = []
+        perso_info = {}
+        global_info = self._client.get_account()
+        for k, v in global_info.iteritems():
+            if k == "balances":
+                for coin in v:
+                    if float(coin['locked']) != 0. or float(coin['free']) != 0.:
+                        coin_in_balance.append(coin)
+        return coin_in_balance
+
+    def my_raw_input(self, r, c, prompt_string):
+        test = ""
+        #self.cmd_window.erase()
+        self.cmd_window.border()
+        self.cmd_window.addstr(r, c, prompt_string)
+        #input = self.cmd_window.getstr(r + 1, c + 1)
+        self.display_window.refresh()
+        test = self.cmd_window.getch()
+
+        return test
+
     def print_char_from_user(self):
         self.cmd_window.erase()
+
+    #TODO store coin.prices in the same place -> commande _coins _list_coins duplicated ?
+    def remove_all_coin(self):
+        i = 1
+        for k, v in self._coin_prices.items():
+            i += 1
+            # Don't delete btcusdt, we need one coin to use the websocket
+            # and call print_coins which update the price
+            if k == "BTCUSDT":
+                continue
+            del self._coin_prices[k]
+            del self._coin_prices_old[k]
+
+    #TODO store coin.prices in the same place -> commande _coins _list_coins duplicated ?
+    def remove_coin(self, coin):
+        # coin_price: {'XLMBTC': u'0.00003129'}
+        # coin: trxbtc@aggTrade
+        i = 1
+        coin = coin.split("@", 2)[0].upper()
+        self.display_in_logger("coin: "+ str(coin) + "  !! coin_price: " + str(self._coin_prices))
+        for k, v in self._coin_prices.items():
+            i += 1
+            if k == coin:
+                del self._coin_prices[k]
+                del self._coin_prices_old[k]
 
     #TODO make this better
     def redraw_command_line(self, command, curpos):
@@ -85,85 +162,64 @@ class Window():
             i+=1
         self.cmd_window.refresh()
 
-
-    def my_raw_input(self, r, c, prompt_string):
-        test = ""
-        #self.cmd_window.erase()
-        self.cmd_window.border()
-        self.cmd_window.addstr(r, c, prompt_string)
-        #input = self.cmd_window.getstr(r + 1, c + 1)
-        self.display_window.refresh()
-        test = self.cmd_window.getch()
-
-        return test
-
-    #TODO store coin.prices in the same place -> commande _coins _list_coins duplicated ?
-    def remove_all_coin(self):
+    # TODO DIRTY
+    def result_display_spec(self, screen, history):
+        screen.clear()
+        screen.border()
         i = 1
-        for k, v in self._coin_prices.items():
+        for result in history:
+            screen.addstr(i, 1, result)
             i += 1
-            self.result_cmd_window.addstr(i, 20, str(k))
-            del self._coin_prices[k]
-            del self._coin_prices_old[k]
-        self.display_window.refresh()
+            if i > 20:
+                break
+        screen.refresh()
 
-    #TODO store coin.prices in the same place -> commande _coins _list_coins duplicated ?
-    def remove_coin(self, coin):
+    # TODO DIRTY Create generic display function
+    def result_display(self, screen, history):
+        screen.clear()
+        screen.border()
         i = 1
-        self.display_window.clear()
-        for k, v in self._coin_prices.items():
+        for result in history:
+            screen.addstr(i, 1, str(result) + " iter = " + str(i))
             i += 1
-            self.result_cmd_window.addstr(i, 20, str(k)+"/"+coin)
-            self.result_cmd_window.refresh()            
-            if k == coin:
-                del self._coin_prices[k]
-                del self._coin_prices_old[k]
-        self.display_window.refresh()
+        screen.refresh()
 
-    def init_list_of_price(self, coin_in_balance, market_prices):
-        # x = {u'symbol': u'BNBBTC', u'price': u'0.04661000'}
-        # x['symbol'] = BNBBTC
-        # coin = {u'locked': u'1316.00000000', u'asset': u'XVG', u'free': u'0.18300000'}
-        # coin['asset'] = BTC
-        self.first_draw = 0
-        self.display_window.clear()
-        if len(coin_in_balance) > 0:        
-            for coin in coin_in_balance:
-                for x in market_prices:
-                    if str(x['symbol']) ==  str(coin['asset'])+"BTC":
-                        self._coin_prices.update({str(x['symbol']): x["price"]})
-                        self._coin_prices_old.update({str(x['symbol']): x["price"]})
-        self.print_prices()
-
-    def update_price(self, pair):
-        self._coin_prices.update({str(pair["symbol"]): pair["price"]})
-        self._coin_prices_old.update({str(pair["symbol"]): pair["price"]})
+    def set_old_prices(self, old_order_coins_price):
+        self._old_order_coins_price = old_order_coins_price
 
     def set_menu_value(self, value):
         self.first_draw = 0
         self.menu_view = value
 
+    def update_price(self, pair):
+        self._coin_prices.update({str(pair["symbol"]): pair["price"]})
+        self._coin_prices_old.update({str(pair["symbol"]): pair["price"]})
+
     def display_menu(self):
+        self.display_menu_window.clear()
+        self.display_in_logger("Value of menue.view" + self.menu_view)
         if self.menu_view == "history":
-            self.display_window.addstr(1, 1, "  History  ", curses.color_pair(4))
-            self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, 1, "  History  ", curses.color_pair(4))
+            self.display_menu_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
         elif self.menu_view == "order":
-            self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(4))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, 1, "  History  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(4))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
         elif self.menu_view == "wallet":
-            self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(4))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, 1, "  History  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(4))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(3))
         elif self.menu_view == "bot":
-            self.display_window.addstr(1, 1, "  History  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
-            self.display_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(4))
+            self.display_menu_window.addstr(1, 1, "  History  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "), "  Order  ", curses.color_pair(3))
+            self.display_menu_window.addstr(1, len("  History  "+"  Wallet  "+"  Order  "), "  Bot  ", curses.color_pair(4))
+        self.display_menu_window.border()
+        self.display_menu_window.refresh()
 
     #TODO store tab[3 -4] as float
     def display_sending_order(self, tab, client):
@@ -180,13 +236,12 @@ class Window():
         self.result_cmd_window.addstr(4, 1, "Total Btc:"+ str(float(tab[4])/100000000*float(tab[3])))
         self.result_cmd_window.refresh()
         self.result_cmd_window.border()
-        #Fixer CE RAW INPUT
 
         command = str(self.my_raw_input( 0, 0, 'Are you sure(PRESS y to confirm):'))
         self.result_cmd_window.clear()
         self.result_cmd_window.refresh()
         self.result_cmd_window.border()
-
+        #ADD SUCCED ORDER WITH ID SOMEWHERE TO REMOVE IT
         if int(command) == 121:
             try:
                 ret = client.create_order(symbol=tab[2],
@@ -235,41 +290,7 @@ class Window():
         #self.result_cmd_window.addstr(3, 2, "order [b/s] [COIN] [QTY] [PRICE 1BTC = 100000000]")
         #self.result_cmd_window.addstr(4, 2, "ex:   Order  b     trx    32    100")
 
-    # TODO DIRTY
-    def result_display_spec(self, screen, history):
-        screen.clear()
-        screen.border()
-        i = 1
-        for result in history:
-            screen.addstr(i, 1, result)
-            i += 1
-            if i > 20:
-                break
-        screen.refresh()
 
-    # TODO DIRTY Create generic display function
-    def result_display(self, screen, history):
-        screen.clear()
-        screen.border()
-        i = 1
-        for result in history:
-            screen.addstr(i, 1, result + " iter = " + str(i))
-            i += 1
-        screen.refresh()
-
-    def get_coin_in_balance(self):
-        coin_in_balance = []
-        perso_info = {}
-        global_info = self._client.get_account()
-        for k, v in global_info.iteritems():
-            if k == "balances":
-                for coin in v:
-                    if float(coin['locked']) != 0. or float(coin['free']) != 0.:
-                        coin_in_balance.append(coin)
-        return coin_in_balance
-
-    def set_old_prices(self, old_order_coins_price):
-        self._old_order_coins_price = old_order_coins_price
 
     def display_wallet(self):
         #TODO Check la largeur de windows
@@ -345,7 +366,7 @@ class Window():
  #       self.display_window.clear()
         klen = 0
         #We start to display other coin at position 3, Btc start at 1
-        pos_raw = self.size_top_menu
+        pos_raw = 1
         pos_col = 1
         column_tot = 1
 
@@ -357,15 +378,14 @@ class Window():
             elif self.menu_view == "order":
                 self.result_cmd_window.clear()
                 self.display_all_orders(1)
-        self.display_menu()
 
-# DEBUG dysply price list
-#        self.result_cmd_window.addstr(1, 1, str(self._coin_prices.items()))
-#        self.result_cmd_window.addstr(8, 1, str(self._coin_prices_old.items()))
-#        self.result_cmd_window.refresh()        
+        #CLEAN OLD PRICE
+        if self.first_draw == 10:
+            self.redraw = 1
+            self.display_window.clear()
+            self.display_window.border()
+            self.display_window.refresh()
 
-        #Print TOP MENU
-        # TODO clear this ugly menu
         if len(self._coin_prices) > 0:
             #TODO add a check if too much coin
             for k, v in self._coin_prices.items():
@@ -374,7 +394,7 @@ class Window():
                         # change this by responsive pos 
                         self.display_window.addstr(3, 70, "The King ")
                         klen = len("The King ") + 70
-                        if self.first_draw == 0:
+                        if self.first_draw == 0 or self.redraw == 1:
                             v = "{:.2f}".format(float(v))
                             self.color = curses.color_pair(0)
                         elif float(self._coin_prices_old[k]) > float(v):
@@ -389,7 +409,7 @@ class Window():
                     elif k != "":
                         self.display_window.addstr(pos_raw, pos_col,  str(k) + " ,price: ")
                         klen = len( str(k) + " ,price: ") + pos_col
-                        if self.first_draw == 0:
+                        if self.first_draw == 0 or self.redraw == 1:
                             self.color = curses.color_pair(0)
                         elif float(self._coin_prices_old[k]) > float(v):
                             self.color = curses.color_pair(1)
@@ -400,20 +420,21 @@ class Window():
                             self.tot_column_len_price = len(v) + klen
                             if pos_raw + 1 == self.size_display_windows:
                                 pos_col = self.tot_column_len_price + 1
-                                pos_raw = self.size_top_menu
+                                pos_raw = 1
                             continue
                         self.display_window.addstr(pos_raw, klen, str(v), self.color)
                         self.tot_column_len_price = len(v) + klen
-                        self.display_window.addstr(3, 1, "size windows" +str(self.size_display_windows)+" len_price"+str(self.tot_column_len_price)+" ,raw:" + str(pos_raw), self.color)
+                        # self.display_in_logger("size windows" +str(self.size_display_windows)+" len_price"+str(self.tot_column_len_price)+" ,raw:" + str(pos_raw))
                         pos_raw += 1
                         if pos_raw + 1 == self.size_display_windows:
                             pos_col = self.tot_column_len_price + 1
-                            pos_raw = self.size_top_menu
+                            pos_raw = 1
 
                 #else:
                 #    self.display_window.addstr(pos, 1, k + " ,price: ")
                 #    self.display_window.addstr(pos, klen, v, curses.color_pair(0))
-        self.first_draw = 1
+        self.first_draw += 1
+        self.redraw = 0
         self.display_window.border()
         self.display_window.refresh()
 

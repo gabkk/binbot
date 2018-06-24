@@ -26,20 +26,41 @@ class Command():
     def display_help(self):
         self._window.result_display_spec(self._window.result_cmd_window, help_str)
 
-    def add_coin_fct(self, command):
-        new_coin = command.split(" ", 2)[1]
-        prices = self._client.get_all_tickers()
-        #TODO improve this
-        tmp_dict = []
-        for pair in  prices:
-            if str(pair["symbol"]) == new_coin.upper() + "BTC":
-                self._window.update_price(pair)
-                tmp_dict.append({'asset': new_coin.upper()})
-                break
-        #TODO improve this
-        self._window.init_list_of_price(tmp_dict, prices)
+    def display_in_logger(self, str):
+        self._window.logger.clear()
+        self._window.logger.addstr(1, 1, str)
+        self._window.logger.border()
+        self._window.logger.refresh()
 
-        new_coin = new_coin.lower() + "btc@aggTrade"
+
+    def add_coin_fct(self, command):
+        command = command.split(" ", 2)[1]
+        ret_is_valid = command.find("/")
+        if ret_is_valid == -1:
+            return "error format sould be COIN1/COIN2", self._coins
+        is_pair_exist = 0
+        new_coin = command.split("/", 2)[0]
+        change_coin = command.split("/", 2)[1]
+        self.display_in_logger(new_coin.upper() + change_coin.upper())
+        prices = self._client.get_all_tickers()
+        for pair in  prices:
+            if str(pair["symbol"]) == new_coin.upper() + change_coin.upper():
+                self._window.display_window.clear()
+                self._window.display_window.refresh()
+                self._window.update_price(pair)
+                self._window.first_draw = 0
+                self._window.print_prices()
+                is_pair_exist = 1
+                break
+
+        if is_pair_exist == 0:
+            self.display_in_logger("error Pair doesn't exist")
+            return "error Pair doesn't exist", self._coins
+
+        new_coin = new_coin.lower() + change_coin + "@aggTrade"
+        self.display_in_logger("add : " + new_coin)
+        self.display_in_logger("list : " + str(self._coins))
+
         if new_coin not in self._coins:
             self._coins.append(new_coin)
         else:
@@ -48,22 +69,38 @@ class Command():
 
     #TODO Fix bug rm redraw all
     def del_coin_fct(self, command):
-        new_coin = command.split(" ", 2)[1]
-        #TODO check rm all doesn't work proprely
-        if new_coin == "all":
-            for x in self._coins:
-                self._coins.remove(x)
-                self._window.remove_all_coin()
-            self._window.init_list_of_price([],[])
+        command = command.split(" ", 2)[1]
+        self.display_in_logger(str(command))
+        if command == "all":
+            self._coins = []
+            self._window.remove_all_coin()
+            self._window.display_window.clear()
+            self._window.display_window.refresh()
+            self._window.first_draw = 0
+            self._window.print_prices()
             return "delete all coin in list" + str(), self._coins
-        coin_symbole = new_coin.upper() + "BTC"
-        new_coin = new_coin.lower() + "btc@aggTrade"
-        if new_coin in self._coins:
-            self._coins.remove(new_coin)
+        
+        ret_is_valid = command.find("/")
+        if ret_is_valid == -1:
+            return "error format sould be COIN1/COIN2", self._coins
+        is_pair_exist = 0
+        new_coin = command.split("/", 2)[0]
+        change_coin = command.split("/", 2)[1]
+
+        #TODO check rm all doesn't work proprely
+        coin_symbole = new_coin.lower() + change_coin.lower() + "@aggTrade"
+
+        #DEBUG
+        #self.display_in_logger("Symbol: "+coin_symbole + "list of coins: " + str(self._coins))
+
+        if coin_symbole in self._coins:
+            self._coins.remove(coin_symbole)
             self._window.remove_coin(coin_symbole)
-            #TODO dirty fix this
-            self._window.init_list_of_price([],[])
-            return "new coin delete to list: " + new_coin + "\n", self._coins
+            self._window.display_window.clear()
+            self._window.display_window.refresh()
+            self._window.first_draw = 0
+            self._window.print_prices()
+            return "new coin delete to list: " + coin_symbole + "\n", self._coins
         else:
             return "coin doesn't exist" + "\n", self._coins
 
@@ -133,7 +170,10 @@ class Command():
         else:
             result = "Unknow command '" + fcommand + "'"
         history.append(result)
-        self._window.result_display(self._window.result_cmd_window, history)
+        #TODO normal usage doesn't work with logger debug
+        if len(history) > 5:
+            history = []
+        #self._window.result_display(self._window.logger, history)
         return history
 
     def close(self):
@@ -168,7 +208,10 @@ class Command():
 #        market_prices = self._client.get_symbol_ticker()
 #        coin_in_balance = self.get_coin_in_balance()
 #        self._window.init_list_of_price(coin_in_balance, market_prices)
+
+
         while char != "27":
+            self._window.display_menu()
             try:
                 #command = raw_input('Prompt ("stop" to quit): ')
 #                char = str(self._window.my_raw_input(0, 0, 'Enter your command (help):' + ", raw: "+ str(self._window.rows)+ ", col: "+str(self._window.columns)))
