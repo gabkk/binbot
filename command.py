@@ -113,6 +113,7 @@ class Command():
             return "coin doesn't exist" + "\n", self._coins
 
     def check_order(self,command):
+        # TODO ALLOW TO SELL IN OTHER CURRENCY THAN BTC
         tab = command.split()
         len_tab= len(tab)
         if len_tab <= 1:

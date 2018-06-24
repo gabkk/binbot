@@ -90,8 +90,8 @@ class Window():
             for coin in coin_in_balance:
                 for x in market_prices:
                     if str(x['symbol']) == str(coin['asset'])+"BTC":
-                        self._coin_prices.update({str(x['symbol']): x["price"]})
-                        self._coin_prices_old.update({str(x['symbol']): x["price"]})
+                        self._coin_prices.update({str(x['symbol']): {"price": str(x["price"]), "24h": ""}})
+                        self._coin_prices_old.update({str(x['symbol']): {"price": str(x["price"]), "24h": ""}})
         self.display_window.refresh()
         self.print_prices()
 
@@ -192,8 +192,8 @@ class Window():
         self.menu_view = value
 
     def update_price(self, pair):
-        self._coin_prices.update({str(pair["symbol"]): pair["price"]})
-        self._coin_prices_old.update({str(pair["symbol"]): pair["price"]})
+        self._coin_prices.update({str(pair["symbol"]): {"price": pair["price"]}})
+        self._coin_prices_old.update({str(pair["symbol"]): {"price": pair["price"]}})
 
     def display_menu(self):
         self.display_menu_window.clear()
@@ -388,35 +388,40 @@ class Window():
                         self.display_window.addstr(1, 1, "BTCUSDT ")
                         klen = len("The King ") + 70
                         if self.first_draw == 0 or self.redraw == 1:
-                            v = "{:.2f}".format(float(v))
+                            v = "{:.2f}".format(float(v["price"]))
                             self.color = curses.color_pair(0)
-                        elif float(self._coin_prices_old[k]) > float(v):
-                            v = "{:.2f}".format(float(v))
+                        elif float(self._coin_prices_old[k]["price"]) > float(v["price"]):
+                            v = "{:.2f}".format(float(v["price"]))
                             self.color = curses.color_pair(1)
-                        elif float(self._coin_prices_old[k]) < float(v):
-                            v = "{:.2f}".format(float(v))
+                        elif float(self._coin_prices_old[k]["price"]) < float(v["price"]):
+                            v = "{:.2f}".format(float(v["price"]))
                             self.color = curses.color_pair(2)
-                        elif float(self._coin_prices_old[k]) == float(v):
+                        elif float(self._coin_prices_old[k]["price"]) == float(v["price"]):
                             continue
-                        self.display_window.addstr(1, klen, v, self.color)
+                        self.display_window.addstr(1, klen, str(v), self.color)
                     elif k != "":
                         self.display_window.addstr(pos_raw, pos_col,  str(k) + " ,price: ")
                         klen = len( str(k) + " ,price: ") + pos_col
                         if self.first_draw == 0 or self.redraw == 1:
                             self.color = curses.color_pair(0)
-                        elif float(self._coin_prices_old[k]) > float(v):
+                        elif float(self._coin_prices_old[k]["price"]) > float(v["price"]):
                             self.color = curses.color_pair(1)
-                        elif float(self._coin_prices_old[k]) < float(v):
+                        elif float(self._coin_prices_old[k]["price"]) < float(v["price"]):
                             self.color = curses.color_pair(2)
-                        elif float(self._coin_prices_old[k]) == float(v):
+                        elif float(self._coin_prices_old[k]["price"]) == float(v["price"]):
                             pos_raw += 1
-                            self.tot_column_len_price = len(v) + klen
+                            self.tot_column_len_price = len(str(v["price"])) + klen
                             if pos_raw + 1 == self.size_display_windows:
                                 pos_col = self.tot_column_len_price + 1
                                 pos_raw = 1
                             continue
-                        self.display_window.addstr(pos_raw, klen, str(v), self.color)
-                        self.tot_column_len_price = len(v) + klen
+                        self.display_window.addstr(pos_raw, klen, str(v["price"]), self.color)
+                        klen += len(str(v["price"]))
+                        if len(str(v["24h"])) > 1 and str(v["24h"][0]) == "-":
+                            self.display_window.addstr(pos_raw, klen, str("   " + v["24h"]), curses.color_pair(1))
+                        else:
+                            self.display_window.addstr(pos_raw, klen, str("   " + v["24h"]), curses.color_pair(2))
+                        self.tot_column_len_price = len(str("   " + v["24h"])) + klen
                         # self.display_in_logger("size windows" +str(self.size_display_windows)+" len_price"+str(self.tot_column_len_price)+" ,raw:" + str(pos_raw))
                         pos_raw += 1
                         if pos_raw + 1 == self.size_display_windows:
@@ -432,15 +437,96 @@ class Window():
         self.display_window.refresh()
 
     def display_prices(self, msg):
-        #global compteur
+        # global compteur
+        # 
         if msg['data']['e'] == "aggTrade":
-            self._coin_prices.update({msg['data']['s']: msg['data']['p']})
-            self.print_prices()
-            self._coin_prices_old.update({msg['data']['s']: msg['data']['p']})
-        else:
-            self.display_in_logger(str(msg))
+            if str(msg['data']['s']) != "BTCUSDT":
+                self._coin_prices[str(msg['data']['s'])]["price"] = str(msg['data']['p'])
+                self.print_prices()
+                self._coin_prices_old[str(msg['data']['s'])]["price"] = str(msg['data']['p'])
+        elif msg['data']['e'] == "24hrTicker":
+            if str(msg['data']['s']) != "BTCUSDT":
+                self._coin_prices[str(msg['data']['s'])]["24h"] = str(msg['data']['P'])
+                self.print_prices()
+                self._coin_prices_old[str(msg['data']['s'])]["24h"] = str(msg['data']['P'])
+        self.display_in_logger(str(self._coin_prices))
 
     def close_ncurses(self):
         curses.nocbreak()
         curses.noecho()
         curses.endwin()
+
+
+        """Start a websocket for symbol trade data
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#aggregate-trade-streams
+
+        :param symbol: required
+        :type symbol: str
+        :param callback: callback function to handle messages
+        :type callback: function
+
+        :returns: connection key string if successful, False otherwise
+
+        Message Format
+
+        .. code-block:: python
+
+            {
+                "e": "aggTrade",        # event type
+                "E": 1499405254326,     # event time
+                "s": "ETHBTC",          # symbol
+                "a": 70232,             # aggregated tradeid
+                "p": "0.10281118",      # price
+                "q": "8.15632997",      # quantity
+                "f": 77489,             # first breakdown trade id
+                "l": 77489,             # last breakdown trade id
+                "T": 1499405254324,     # trade time
+                "m": false,             # whether buyer is a maker
+                "M": true               # can be ignored
+            }
+
+        """
+
+        """Start a websocket for a symbol's ticker data
+
+        https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#individual-symbol-ticker-streams
+
+        :param symbol: required
+        :type symbol: str
+        :param callback: callback function to handle messages
+        :type callback: function
+
+        :returns: connection key string if successful, False otherwise
+
+        Message Format
+
+        .. code-block:: python
+
+            {
+                "e": "24hrTicker",  # Event type
+                "E": 123456789,     # Event time
+                "s": "BNBBTC",      # Symbol
+                "p": "0.0015",      # Price change
+                "P": "250.00",      # Price change percent
+                "w": "0.0018",      # Weighted average price
+                "x": "0.0009",      # Previous day's close price
+                "c": "0.0025",      # Current day's close price
+                "Q": "10",          # Close trade's quantity
+                "b": "0.0024",      # Best bid price
+                "B": "10",          # Bid bid quantity
+                "a": "0.0026",      # Best ask price
+                "A": "100",         # Best ask quantity
+                "o": "0.0010",      # Open price
+                "h": "0.0025",      # High price
+                "l": "0.0010",      # Low price
+                "v": "10000",       # Total traded base asset volume
+                "q": "18",          # Total traded quote asset volume
+                "O": 0,             # Statistics open time
+                "C": 86400000,      # Statistics close time
+                "F": 0,             # First trade ID
+                "L": 18150,         # Last trade Id
+                "n": 18151          # Total number of trades
+            }
+
+        """
