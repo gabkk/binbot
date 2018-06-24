@@ -1,5 +1,10 @@
+import time
+import traceback
+import logging
+from windows_display import Window
 from binance.enums import *
 from binance.exceptions import BinanceAPIException, BinanceRequestException, BinanceWithdrawException
+from binance.websockets import BinanceSocketManager
 
 #remove this
 import sys
@@ -13,15 +18,18 @@ help_str = [' AVAILABLE COMMANDS\n', \
             ]
 
 class Command():
-    def __init__(self, window, bm, client, coins_in_request, coins_in_balance):
-        self._window = window
-        self._bm = bm
+    def __init__(self, client, coins_in_request, coins_in_balance, market_prices):
+        self._window = Window(client)
+        self._window.init_list_of_price(coins_in_balance, market_prices)
         self._coins = coins_in_request
         self._coins_in_balance = coins_in_balance
         self._client = client
         self._list_coins = []
         self._old_order_coins_price = []
         self.bot_list = []
+        self._bm = BinanceSocketManager(client)
+        self._bm.start_multiplex_socket(coins_in_request, self._window.display_prices)
+        self._bm.start()
 
     def display_help(self):
         self._window.result_display_spec(self._window.result_cmd_window, help_str)
@@ -106,13 +114,24 @@ class Command():
 
     def check_order(self,command):
         tab = command.split()
-        if len(tab) < 5:
+        len_tab= len(tab)
+        if len_tab <= 1:
             self._window.display_order_usage()
-            self._window.display_all_orders(5)
+            self._window.result_cmd_window.border()
+            self._window.result_cmd_window.refresh()
             return 0, tab
+        elif len_tab > 1 and len_tab < 5:
+            if tab[1] == "ls":
+                self._window.display_all_orders(5)
+            self._window.result_cmd_window.border()
+            self._window.result_cmd_window.refresh()
+            return 0, tab
+
         if tab[1] != "b" and tab[1] != "s":
             self._window.result_cmd_window.addstr(1, 1, "Error:" + command + " should be b / s" )
             self._window.display_order_usage()
+            self._window.result_cmd_window.border()
+            self._window.result_cmd_window.refresh()
             return 0, tab
         try:
             int(tab[3])
@@ -143,8 +162,9 @@ class Command():
         ret_check, tab = self.check_order(result) 
         if ret_check == 1:
             self._window.display_sending_order(tab, self._client)
-        self._window.result_cmd_window.border()
-        self._window.result_cmd_window.refresh()
+        else:
+            self._window.result_cmd_window.border()
+            self._window.result_cmd_window.refresh()
 
     def parse_cmd(self, history, command, curpos):
         result = ""
@@ -173,7 +193,7 @@ class Command():
         #TODO normal usage doesn't work with logger debug
         if len(history) > 5:
             history = []
-        #self._window.result_display(self._window.logger, history)
+        self._window.result_display(self._window.logger, history)
         return history
 
     def close(self):
@@ -189,7 +209,7 @@ class Command():
         curpos = 0
         first_char = 0
         char = ''
-
+        change_menu = 0
         #TODO TODO This function seems to work
         #coin_total: 4639.076 qty_total: 1037.0 price:0.00420616
         #coin_total: 4639.076 qty_total: 2926.0 price:0.01712692
@@ -208,7 +228,6 @@ class Command():
 #        market_prices = self._client.get_symbol_ticker()
 #        coin_in_balance = self.get_coin_in_balance()
 #        self._window.init_list_of_price(coin_in_balance, market_prices)
-
 
         while char != "27":
             self._window.display_menu()
@@ -241,13 +260,17 @@ class Command():
                     elif char == "265":
                         self._window.set_menu_value("history")
                         self._window.result_display(self._window.result_cmd_window, history)
+                        change_menu = 1
                     elif char == "266":
                         self._window.set_menu_value("wallet") 
+                        change_menu = 1
                     elif char == "267":
                         self._window.set_menu_value("order") 
+                        change_menu = 1
                     elif char == "268":
                         self._window.set_menu_value("bot")
                         self.bot_info()
+                        change_menu = 1
 #                        self._window.result_display(self._window.result_cmd_window, history)
                     elif  curpos > 0 and curpos < len(command):
                         command.insert(curpos, char)
@@ -268,9 +291,22 @@ class Command():
                         curpos += 1
                         #self._window.print_char_from_user()
                     self._window.redraw_command_line(command, curpos)
-            except:
-                print str(command)
-                self._window.close_ncurses()
+                if change_menu == 1:
+                    if self._window.menu_view == "wallet":
+                        self._window.display_wallet()
+                    elif self._window.menu_view == "order":
+                        self._window.result_cmd_window.clear()
+                        self._window.display_all_orders(1)
+                        self._window.result_cmd_window.border()
+                        self._window.result_cmd_window.refresh()
+                    change_menu = 0
+                # Display the current payload
+                self.display_in_logger("Main loop: " + str(command))
+
+            except Exception as e:
+                logging.error(traceback.format_exc())
+                print "ERROR" + str(e)
+                time.sleep(1500)
                 raise
-                break
+        print("OUT BECAUSE OF " + str(command))
         self.close()

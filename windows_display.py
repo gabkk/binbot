@@ -197,7 +197,7 @@ class Window():
 
     def display_menu(self):
         self.display_menu_window.clear()
-        self.display_in_logger("Value of menue.view" + self.menu_view)
+        # self.display_in_logger("Value of menue.view" + self.menu_view)
         if self.menu_view == "history":
             self.display_menu_window.addstr(1, 1, "  History  ", curses.color_pair(4))
             self.display_menu_window.addstr(1, len("  History  "), "  Wallet  ", curses.color_pair(3))
@@ -234,8 +234,8 @@ class Window():
         self.result_cmd_window.addstr(2, 1, "Quantity:"+ str(float(tab[3])))
         self.result_cmd_window.addstr(3, 1, "Price satoshi: "+ str(tab[4]))
         self.result_cmd_window.addstr(4, 1, "Total Btc:"+ str(float(tab[4])/100000000*float(tab[3])))
-        self.result_cmd_window.refresh()
         self.result_cmd_window.border()
+        self.result_cmd_window.refresh()
 
         command = str(self.my_raw_input( 0, 0, 'Are you sure(PRESS y to confirm):'))
         self.result_cmd_window.clear()
@@ -261,6 +261,8 @@ class Window():
 
     def display_all_orders(self, offset):
         all_orders = self._client.get_open_orders()
+        if len(all_orders) == 0:
+            self.result_cmd_window.addstr(1, 2, "No pending orders: ")
         for x in range(len(all_orders)):
             #Pos after USAGE
             self.result_cmd_window.addstr(x + offset, 2,
@@ -270,14 +272,14 @@ class Window():
                                                 + " quantity:" + all_orders[x]["origQty"]
                                                 + " time: " + datetime.datetime.fromtimestamp(int(all_orders[x]["time"])/1000).strftime('%Y-%m-%d %H:%M:%S')
                                                 )
-        self.result_cmd_window.border()
-        self.result_cmd_window.refresh()
 
     def display_order_usage(self):
         self.result_cmd_window.clear()
-        self.result_cmd_window.addstr(2, 2, "Error expected format : ")
-        self.result_cmd_window.addstr(3, 2, "order [b/s] [COIN] [QTY] [PRICE 1BTC = 100000000]")
+        self.result_cmd_window.addstr(2, 2, "Send a buy or sell order: ")
+        self.result_cmd_window.addstr(3, 2, "      order [b/s] [COIN] [QTY] [PRICE 1BTC = 100000000]")
         self.result_cmd_window.addstr(4, 2, "ex:   Order  b     trx    32    100")
+        self.result_cmd_window.addstr(5, 2, "Display currents order: ")
+        self.result_cmd_window.addstr(6, 2, "ex:   Order  ls")
 
     def display_bot_info(self, bot_list):
         if len(bot_list) == 0:
@@ -366,18 +368,9 @@ class Window():
  #       self.display_window.clear()
         klen = 0
         #We start to display other coin at position 3, Btc start at 1
-        pos_raw = 1
+        pos_raw = 2
         pos_col = 1
         column_tot = 1
-
-        # TODO make it works actually the function display_orders is called too often
-        # it raise an exception
-        if self.first_draw == 0:
-            if self.menu_view == "wallet":
-                self.display_wallet()
-            elif self.menu_view == "order":
-                self.result_cmd_window.clear()
-                self.display_all_orders(1)
 
         #CLEAN OLD PRICE
         if self.first_draw == 10:
@@ -392,7 +385,7 @@ class Window():
                 if k in self._coin_prices_old:
                     if str(k) == "BTCUSDT":
                         # change this by responsive pos 
-                        self.display_window.addstr(3, 70, "The King ")
+                        self.display_window.addstr(1, 1, "BTCUSDT ")
                         klen = len("The King ") + 70
                         if self.first_draw == 0 or self.redraw == 1:
                             v = "{:.2f}".format(float(v))
@@ -405,7 +398,7 @@ class Window():
                             self.color = curses.color_pair(2)
                         elif float(self._coin_prices_old[k]) == float(v):
                             continue
-                        self.display_window.addstr(3, klen, v, self.color)
+                        self.display_window.addstr(1, klen, v, self.color)
                     elif k != "":
                         self.display_window.addstr(pos_raw, pos_col,  str(k) + " ,price: ")
                         klen = len( str(k) + " ,price: ") + pos_col
