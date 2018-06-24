@@ -165,13 +165,13 @@ class Window():
     # TODO DIRTY
     def result_display_spec(self, screen, history):
         screen.clear()
-        screen.border()
         i = 1
         for result in history:
             screen.addstr(i, 1, result)
             i += 1
             if i > 20:
                 break
+        screen.border()
         screen.refresh()
 
     # TODO DIRTY Create generic display function
@@ -433,9 +433,12 @@ class Window():
 
     def display_prices(self, msg):
         #global compteur
-        self._coin_prices.update({msg['data']['s']: msg['data']['p']})
-        self.print_prices()
-        self._coin_prices_old.update({msg['data']['s']: msg['data']['p']})
+        if msg['data']['e'] == "aggTrade":
+            self._coin_prices.update({msg['data']['s']: msg['data']['p']})
+            self.print_prices()
+            self._coin_prices_old.update({msg['data']['s']: msg['data']['p']})
+        else:
+            self.display_in_logger(str(msg))
 
     def close_ncurses(self):
         curses.nocbreak()

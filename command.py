@@ -12,9 +12,9 @@ import sys
 help_str = [' AVAILABLE COMMANDS\n', \
             ' ad -> to add a new coin, ex: ac iota\n',\
             ' rm -> to rm an existing coin, ex: rm iota\n'\
-            ' wa -> display_wallet\n'\
-            ' order -> pass an order\n'\
-            ' quit -> exit binbot'\
+            '  wa -> display_wallet\n'\
+            '  order -> pass an order\n'\
+            '  quit -> exit binbot'\
             ]
 
 class Command():
@@ -301,7 +301,7 @@ class Command():
                         self._window.result_cmd_window.refresh()
                     change_menu = 0
                 # Display the current payload
-                self.display_in_logger("Main loop: " + str(command))
+                self.display_in_logger("Main loop: " + str(self._coins))
 
             except Exception as e:
                 logging.error(traceback.format_exc())

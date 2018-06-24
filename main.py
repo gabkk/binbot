@@ -31,6 +31,7 @@ def main():
             for coin in v:
                 if float(coin['locked']) != 0. or float(coin['free']) != 0.:
                     coins_in_request.append(str(coin['asset']).lower()+"btc@aggTrade")
+                    coins_in_request.append(str(coin['asset']).lower()+"btc@ticker")
                     coins_in_balance.append(coin)
     # Initialize a first list of price regarding our coins instead of waiting from
     # the socket to return a new value   
