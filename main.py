@@ -29,12 +29,12 @@ def main():
     for k, v in global_info.iteritems():
         if k == "balances":
             for coin in v:
-                if float(coin['locked']) != 0. or float(coin['free']) != 0.:
+                if coin['asset'] != "btc" and float(coin['locked']) != 0. or float(coin['free']) != 0.:
                     coins_in_request.append(str(coin['asset']).lower()+"btc@aggTrade")
                     coins_in_request.append(str(coin['asset']).lower()+"btc@ticker")
                     coins_in_balance.append(coin)
     # Initialize a first list of price regarding our coins instead of waiting from
-    # the socket to return a new value   
+    # the socket to return a new value
 
     #Retrieve old orders
     #TODO improve this
@@ -47,6 +47,7 @@ def main():
         command.main_loop()
     except Exception as e:
         print "ERROR" + str(e)
+        raise
 
     reactor.stop()
 
